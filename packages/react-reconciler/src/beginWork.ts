@@ -1,3 +1,4 @@
+import { ReactElementType } from '../../shared/ReactTypes';
 import { FiberNode } from './fiber';
 import { UpdateQueue, processUpdateQueue } from './updateQueue';
 import { HostComponent, HostRoot, HostText } from './workTags';
@@ -7,7 +8,7 @@ export const beginWork = (wip: FiberNode) => {
 		case HostRoot:
 			return updateHostRoot(wip);
 		case HostComponent:
-			return;
+			return updateHostComponent(wip);
 		case HostText:
 			return;
 		default:
@@ -25,4 +26,29 @@ function updateHostRoot(wip: FiberNode) {
 	updateQueue.shared.pending = null;
 	const { memoizedState } = processUpdateQueue(baseState, pending);
 	wip.memoizedState = memoizedState;
+
+	const nextChildren = wip.memoizedState;
+	reconcileChildren(wip, nextChildren);
+	return wip.child;
+}
+
+function updateHostComponent(wip: FiberNode) {
+	const nextProps = wip.pendingProps;
+	const nextChildren = nextProps.children;
+	reconcileChildren(wip, nextChildren);
+	return wip.child;
+}
+
+function reconcileChildren(wip: FiberNode, children?: ReactElementType) {
+	const current = wip.alternate;
+
+	if (current !== null) {
+		// update
+		wip.child = reconcileChildren(wip, current?.child, children);
+	} else {
+		// mount
+		wip.child = reconcileChildren(wip, null, children);
+	}
+
+	reconcileChildFibers(wip, current?.child, children);
 }
